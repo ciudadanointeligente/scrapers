@@ -2,5 +2,5 @@
 require './servel_scrapable_classes'
 
 if !(defined? Test::Unit::TestCase)
-	ServelDB.new.process 18000000, 17999990
+	ServelDB.new(18000000, 17999999).process
 end

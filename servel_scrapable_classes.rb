@@ -3,12 +3,22 @@ require './scrapable_classes'
 
 class ServelDB < StorageableInfo
 
-	def initialize()
+	def initialize(max, min)
                 super()
                 @location = 'http://consulta.servel.cl'
+		# Cambiar!!!
 		@params = 'btnconsulta=SUBMIT&__ASYNCPOST=true&__EVENTARGUMENT=&__EVENTTARGET=&__EVENTVALIDATION=%2FwEWAwL9iqj%2BBQK7%2B6rmDAKVq8qQCQ%3D%3D&__VIEWSTATE=%2FwEPDwUJNzUwMjI5OTkzD2QWAgIDD2QWAgIDDw8WBB4EVGV4dGUeB0VuYWJsZWRoZGRk&hdfl=&txtRUN='
-		@ruts
-		@file_name
+		@param_names = {
+				'btn' => 'btnconsulta',
+				'event' => '__EVENTVALIDATION',
+				'view' => '__VIEWSTATE',
+				'rut' => 'txtRUN'
+				}
+		@ruts = Integer(max).downto(Integer(min))
+		@file_name = 'servel_'+max.to_s+'-'+min.to_s
+		#Set xpaths
+		@xpath_view = '//*[@id="__VIEWSTATE"]'
+		@xpath_event = '//*[@id="__EVENTVALIDATION"]'
 		@xpath_rut = '//*[@id="lbl_run"]'
 		@xpath_name = '//*[@id="lbl_nombre"]/text()'
 		@xpath_gender = '//*[@id="lbl_sexo"]'
@@ -20,14 +30,33 @@ class ServelDB < StorageableInfo
 		@xpath_table = '//*[@id="lbl_mesa"]'
 		@xpath_voting_place = '//*[@id="lbl_localv"]'
 		@xpath_voting_place_adress = '//*[@id="lbl_direcvocal"]'
-		@xpath_vocal_condition = 'Usted no ha sido designado Vocal de Mesa, sin embargo deberá consultar nuevamente a partir del sábado 13 de octubre por si fue designado en reemplazo de un vocal excusado.'
+		@xpath_vocal_condition = '//*[@id="lbl_codvocal"]/text()'
 		@xpath_scrutineer_condition = '//*[@id="lbl_codcolegio"]/text()'
+		#Get initial keys
+		data = open(@location).read
+		html = Nokogiri::HTML(data, nil, 'utf-8')
+		@param_values = {
+				'btn' => 'SUBMIT',
+				'view' => CGI::escape(html.xpath(@xpath_view).first['value']),
+				'event' => CGI::escape(html.xpath(@xpath_event).first['value']),
+				'rut' => ''
+				}
 	end
 
+	def params_url rut
+		@param_values['rut'] = rut
+		params = @param_names.merge(@param_values){|key, name, value| [name, value].join('=')}
+		params.values.join('&')
+	end
+
+	def update_params view, event
+		@param_values['view'] = view
+		@param_values['event'] = event
+	end
+		
+
 	# doc_locations doesn't have the method each
-	def process max, min
-		@ruts = Integer(max).downto(Integer(min))
-		@file_name = 'servel_'+max.to_s+'-'+min.to_s
+	def process
 		doc_locations do |doc_location|
 			begin
 				#doc = read doc_location
@@ -43,26 +72,48 @@ class ServelDB < StorageableInfo
 	def doc_locations
 		for rut in @ruts
 			p rut
-			yield @params+rut.to_s+verificador(rut)
+			yield rut.to_s+verificador(rut)
 		end
 	end
 
 	def format info
-		#format data
+		info
 	end
 
-	def get_info params
-		RestClient.post @location, params
-		html = Nokogiri::HTML(info, nil, 'utf-8')
+	def get_info rut
+		params = params_url rut
+		data = RestClient.post @location, params
+		html = Nokogiri::HTML(data, nil, 'utf-8')
+		#update keys
+		view = CGI::escape(html.xpath(@xpath_view).first['value'])
+		event = CGI::escape(html.xpath(@xpath_event).first['value'])
+		update_params view, event
 		#get data with xpath
+		parsed_data = {
+			'rut' => html.xpath(@xpath_rut).first.children.text.strip,
+			'name' => html.xpath(@xpath_name).first.text.strip,
+			'gender' => html.xpath(@xpath_gender).first.children.text.strip,
+			'electoral_adress' => html.xpath(@xpath_electoral_adress).first.text.strip,
+			'circunscriptional_adress' => html.xpath(@xpath_circunscriptional_adress).first.children.text.strip,
+			'commune' => html.xpath(@xpath_commune).first.children.text.strip,
+			'province' => html.xpath(@xpath_province).first.children.text.strip,
+			'region' => html.xpath(@xpath_region).first.children.text.strip,
+			'table' => html.xpath(@xpath_table).first.children.text.strip,
+			'voting_place' => html.xpath(@xpath_voting_place).first.children.text.strip,
+			'voting_place_adress' => html.xpath(@xpath_voting_place_adress).first.children.text.strip,
+			'vocal_condition' => html.xpath(@xpath_vocal_condition).first.text.strip,
+			'scrutineer_condition' => html.xpath(@xpath_scrutineer_condition).first.text.strip
+		}
 	end
 
 	def save info
-		if !info.nil?
-			file = File.open(@file_name, 'a')
-			file.write(info)
-			file.close()
-		end
+		#if !info.nil?
+		#	file = File.open(@file_name, 'a')
+		#	file.write(info)
+		#	file.write("/n")
+		#	file.close()
+		#end
+		p info
 	end
 
 	def verificador t

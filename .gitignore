@@ -22,3 +22,5 @@ vendor
 *.lock
 # Python compiled files
 *.pyc
+# vi swap files
+*.swp
