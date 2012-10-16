@@ -62,7 +62,6 @@ class ServelDB < StorageableInfo
 
 	def cookies_url
 		response = RestClient.get @location
-		p response.cookies
 		{:cookies => response.cookies}
 	end
 
@@ -101,9 +100,6 @@ class ServelDB < StorageableInfo
 		params = params_url rut
 		cookies = cookies_url
 		data = RestClient.post @location, params, cookies
-		p '<data>'
-		p data
-		p '</data>'
 		html = Nokogiri::HTML(data, nil, 'utf-8')
 		#update keys
 		view = CGI::escape(html.xpath(@xpath_view).first['value'])
