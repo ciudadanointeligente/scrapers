@@ -6,3 +6,7 @@ gem 'rest-client'
 
 # PDF reader
 gem 'pdf-reader'
+
+# DB Persistence
+gem 'activerecord'
+gem 'mysql'

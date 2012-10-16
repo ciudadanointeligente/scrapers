@@ -1,5 +1,9 @@
 # coding: utf-8
 require './scrapable_classes'
+require 'active_record'
+
+class Voter < ActiveRecord::Base
+end
 
 class ServelDB < StorageableInfo
 
@@ -22,31 +26,44 @@ class ServelDB < StorageableInfo
 		@xpath_rut = '//*[@id="lbl_run"]'
 		@xpath_name = '//*[@id="lbl_nombre"]/text()'
 		@xpath_gender = '//*[@id="lbl_sexo"]'
-		@xpath_electoral_adress = '//*[@id="lbl_domelect"]/text()'
-		@xpath_circunscriptional_adress = '//*[@id="lbl_cirelect"]'
+		@xpath_electoral_address = '//*[@id="lbl_domelect"]/text()'
+		@xpath_circunscriptional_address = '//*[@id="lbl_cirelect"]'
 		@xpath_commune = '//*[@id="lbl_comuna"]'
 		@xpath_province = '//*[@id="lbl_provincia"]'
 		@xpath_region = '//*[@id="lbl_region"]'
 		@xpath_table = '//*[@id="lbl_mesa"]'
 		@xpath_voting_place = '//*[@id="lbl_localv"]'
-		@xpath_voting_place_adress = '//*[@id="lbl_direcvocal"]'
+		@xpath_voting_place_address = '//*[@id="lbl_direcvocal"]'
 		@xpath_vocal_condition = '//*[@id="lbl_codvocal"]/text()'
 		@xpath_scrutineer_condition = '//*[@id="lbl_codcolegio"]/text()'
 		#Get initial keys
 		data = open(@location).read
-		html = Nokogiri::HTML(data, nil, 'utf-8')
+		html = Nokogiri::HTML(data, nil, 'utf-9')
 		@param_values = {
 				'btn' => 'SUBMIT',
 				'view' => CGI::escape(html.xpath(@xpath_view).first['value']),
 				'event' => CGI::escape(html.xpath(@xpath_event).first['value']),
 				'rut' => ''
 				}
+                ActiveRecord::Base.establish_connection(
+                        :adapter => "mysql",
+                        :host => "localhost",
+                        :database => "servel",
+			:username => "root",
+			:password => "pass"
+                )
 	end
 
 	def params_url rut
 		@param_values['rut'] = rut
 		params = @param_names.merge(@param_values){|key, name, value| [name, value].join('=')}
 		params.values.join('&')
+	end
+
+	def cookies_url
+		response = RestClient.get @location
+		p response.cookies
+		{:cookies => response.cookies}
 	end
 
 	def update_params view, event
@@ -82,7 +99,11 @@ class ServelDB < StorageableInfo
 
 	def get_info rut
 		params = params_url rut
-		data = RestClient.post @location, params
+		cookies = cookies_url
+		data = RestClient.post @location, params, cookies
+		p '<data>'
+		p data
+		p '</data>'
 		html = Nokogiri::HTML(data, nil, 'utf-8')
 		#update keys
 		view = CGI::escape(html.xpath(@xpath_view).first['value'])
@@ -93,14 +114,14 @@ class ServelDB < StorageableInfo
 			'rut' => html.xpath(@xpath_rut).first.children.text.strip,
 			'name' => html.xpath(@xpath_name).first.text.strip,
 			'gender' => html.xpath(@xpath_gender).first.children.text.strip,
-			'electoral_adress' => html.xpath(@xpath_electoral_adress).first.text.strip,
-			'circunscriptional_adress' => html.xpath(@xpath_circunscriptional_adress).first.children.text.strip,
+			'electoral_address' => html.xpath(@xpath_electoral_address).first.text.strip,
+			'circunscriptional_address' => html.xpath(@xpath_circunscriptional_address).first.children.text.strip,
 			'commune' => html.xpath(@xpath_commune).first.children.text.strip,
 			'province' => html.xpath(@xpath_province).first.children.text.strip,
 			'region' => html.xpath(@xpath_region).first.children.text.strip,
-			'table' => html.xpath(@xpath_table).first.children.text.strip,
+			'voting_table' => html.xpath(@xpath_table).first.children.text.strip,
 			'voting_place' => html.xpath(@xpath_voting_place).first.children.text.strip,
-			'voting_place_adress' => html.xpath(@xpath_voting_place_adress).first.children.text.strip,
+			'voting_place_address' => html.xpath(@xpath_voting_place_address).first.children.text.strip,
 			'vocal_condition' => html.xpath(@xpath_vocal_condition).first.text.strip,
 			'scrutineer_condition' => html.xpath(@xpath_scrutineer_condition).first.text.strip
 		}
@@ -113,7 +134,22 @@ class ServelDB < StorageableInfo
 		#	file.write("/n")
 		#	file.close()
 		#end
-		p info
+		#p info
+		Voter.create(
+                        :rut => info['rut'],
+                        :name => info['name'],
+                        :gender => info['gender'],
+                        :electoral_address => info['electoral_address'],
+                        :circunscriptional_address => info['circunscriptional_address'],
+                        :commune => info['commune'],
+                        :province => info['province'],
+                        :region => info['region'],
+                        :voting_table => info['voting_table'],
+                        :voting_place => info['voting_place'],
+                        :voting_place_address => info['voting_place_address'],
+                        :vocal_condition => info['vocal_condition'],
+                        :scrutineer_condition => info['scrutineer_condition'],
+                )
 	end
 
 	def verificador t
