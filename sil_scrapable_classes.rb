@@ -6,21 +6,29 @@ class CongressTable < StorageableInfo
 	def initialize()
 		super()
 		@model = 'tables'
+		@API_url = 'http://localhost:3000/'
 		@chamber = ''
 	end
 
 	def save formatted_info
-		put formatted_info
+		puts 'formatted_info'
+		puts formatted_info
+		puts '/formatted_info'
+		# post formatted_info
+	end
+
+	def post formatted_info
+		RestClient.post @API_url + @model, {low_chamber_agenda: formatted_info}, {:content_type => :json}
 	end
 
 	def format info
 		formatted_info = {
-        		:uid => info['legislature'] + '-' + info['session'],
-                        :date => info['date'],
-                        :chamber => @chamber,
-                        :legislature => info['legislature'],
-                        :session => info['session'],
-                        :bill_list => info['bill_list']
+    		:uid => info['legislature'] + '-' + info['session'],
+            :date => info['date'],
+            # :chamber => @chamber,
+            :legislature => info['legislature'],
+            :session => info['session'],
+            :bill_list => info['bill_list']
 		}
 	end
 
@@ -40,11 +48,20 @@ class CurrentHighChamberTable < CongressTable
 
 	#python scripts reads and parses
 	def process
+			puts 'processing'
+			puts doc_locations
                 doc_locations.each do |doc_location|
                         begin
-                                #doc = read doc_location
-                                info = get_info doc_location
+                        	puts 'begun'
+                                doc = read doc_location
+                                info = get_info doc
+                                puts 'info'
+                                puts info
+                                puts '/info'
                                 formatted_info = format info
+                                puts 'formatted_info'
+                                puts formatted_info
+                                puts '/formatted_info'
                                 save formatted_info
                         rescue Exception=>e
                         end
@@ -55,24 +72,51 @@ class CurrentHighChamberTable < CongressTable
 		html = Nokogiri::HTML(read(@location), nil, 'utf-8')
 		doc_locations = Array.new
 
-		html.xpath('//*[@id="contentTopI"]/div[1]/div[2]/table//tr[(position()>2)]').each do |tr|
-			table_url = tr.at_xpath('td[5]/a/@href').to_s.strip
-                     	doc_locations.push @base_url + table_url
-		end
+		# doc_locations.push @base_url + html.xpath("//a[@class='citaciones']/@href").to_s.strip
+		doc_locations.push @base_url + html.xpath("//a[@class='citaciones']/@href").to_s.strip
+		puts "doc_locations"
+		puts doc_locations
+		puts "/doc_locations"
+
+		# html.xpath('//*[@id="contentTopI"]/div[1]/div[2]/table//tr[(position()>2)]').each do |tr|
+		# 	table_url = tr.at_xpath('td[5]/a/@href').to_s.strip
+  #                    	doc_locations.push @base_url + table_url
+		# end
 		return doc_locations
 	end
 
 	def get_info doc
-
 		info = Hash.new
-                #exec python script
-                scraped_vals = %x[python table_parser.py '#{doc}'].gsub(/\n/,' ')
-		
-                info['session'] = scraped_vals.scan(/session: (\d*)/).flatten[0]
-                info['legislature'] = scraped_vals.scan(/legislature: (\d*)/).flatten[0]
-                info['date'] = scraped_vals.scan(/date: (\w*) (\d{1,2}) (\d{4})/).join(' ')
-                info['bill_list'] = scraped_vals.scan(/bill numbers: (\S*);/).flatten[0].split(/,/)
 
+		puts "doc"
+		puts doc
+		puts "/doc"
+
+		rx_bills = /Bolet(.*\d+-\d+)*/
+		bills = doc.scan(rx_bills)
+		
+		bill_list = []
+		rx_bill_num = /(\d{0,3})[^0-9]*(\d{0,3})[^0-9]*(\d{1,3})[^0-9]*(-)[^0-9]*(\d{2})/
+		bills.each do |bill|
+			bill.first.scan(rx_bill_num).each do |bill_num_array|
+				bill_num = (bill_num_array).join('')
+				bill_list.push(bill_num)
+			end
+		end
+                #exec python script
+                # puts 'running python script'
+                # scraped_vals = %x[python table_parser.py '#{doc}'].gsub(/\n/,' ')
+                # puts '/running python script'
+                # puts 'scraped_vals'
+                # puts scraped_vals
+                # puts '/scraped_vals'
+		
+                # info['session'] = scraped_vals.scan(/session: (\d*)/).flatten[0]
+                # info['legislature'] = scraped_vals.scan(/legislature: (\d*)/).flatten[0]
+                # info['date'] = scraped_vals.scan(/date: (\w*) (\d{1,2}) (\d{4})/).join(' ')
+
+                # puts '/getting_info'
+        info['bill_list'] = bill_list
 		info
         end
 end
@@ -80,20 +124,27 @@ end
 class CurrentLowChamberTable < CongressTable
 
 	def initialize()
-                super()
-                @location = 'http://www.camara.cl/trabajamos/sala_sesiones.aspx'
-                @chamber = 'C.Diputados'
+        super()
+		@model = 'low_chamber_agendas'
+        @location = 'http://www.camara.cl/trabajamos/sala_documentos.aspx?prmTIPO=TABLA'
+        @chamber = 'C.Diputados'
 		@session_base_url = 'http://www.camara.cl/trabajamos/'
 		@table_base_url = 'http://www.camara.cl'
 		@session_xpath = '//*[@id="detail"]/table/tbody/tr[1]/td[2]/a'
-		@table_xpath = '//*[@id="ctl00_mainPlaceHolder_docpdf"]/li/a'
+		# @table_xpath = '//*[@id="ctl00_mainPlaceHolder_docpdf"]/li/a'
+		@table_xpath = '//*[@id="detail"]/table/tbody/tr[1]/td/a'
         end
 
 #----- REDEFINED -----
 	def doc_locations
 		doc_locations_array = Array.new
-		session_url = get_link(@location, @session_base_url, @session_xpath)
-		table_url = get_link(session_url, @table_base_url, @table_xpath)
+		# session_url = get_link(@location, @session_base_url, @session_xpath)
+		table_url = get_link(@location, @table_base_url, @table_xpath)
+		puts "table_url"
+		puts table_url
+		puts "/table_url"
+		# puts session_url
+		# puts table_url
 		doc_locations_array.push(table_url)
                 # get all with doc.xpath('//*[@id="detail"]/table/tbody/tr[(position()>0)]/td[2]/a/@href').each do |tr|
 	end
@@ -188,6 +239,7 @@ class BillCategory < StorageableInfo
 	end
 
 	def format info
+		puts 'in format info'
 		bill, categories = info
 	        formatted_info = {
                 :uid => @bills[bill].first,

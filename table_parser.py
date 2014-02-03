@@ -28,27 +28,32 @@ def process_table(clean_html):
 			bill_nums.append(bill_num)
 
 	#get date
-	rx_date = re.compile('(\d{1,2}) (?:de ){0,1}(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre) (?:de ){0,1}(\d{4})')
-	date = rx_date.findall(clean_html)
+	# rx_date = re.compile('(\d{1,2}) (?:de ){0,1}(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre) (?:de ){0,1}(\d{4})')
+	# date = rx_date.findall(clean_html)
 	#date is array of arrays
-	date = date[0]
-	date = date_sp_2_en(date)
+	# date = date[0]
+	# date = date_sp_2_en(date)
 	#get legislature
-	rx_legislature = re.compile('LEGISLATURA.+(\d{3})')
-	legislature = rx_legislature.findall(clean_html)
+	# rx_legislature = re.compile('LEGISLATURA.+(\d{3})')
+	# legislature = rx_legislature.findall(clean_html)
 	#get session
-	rx_session = re.compile('Sesi.+?(\d{1,3})')
-	session = rx_session.findall(clean_html)
+	# rx_session = re.compile('Sesi.+?(\d{1,3})')
+	# session = rx_session.findall(clean_html)
 	
 	#print to stdout
-	if bill_nums and date and legislature and session:
-		print "bill numbers: " + ",".join(bill_nums) + ";",
-		print "date: " + " ".join(date) + ";",
-		print "legislature: " + legislature[0] + ";",
-		print "session: " + session[0],
+	# if bill_nums and date and legislature and session:
+	# 	print "bill numbers: " + ",".join(bill_nums) + ";",
+	# 	print "date: " + " ".join(date) + ";",
+	# 	print "legislature: " + legislature[0] + ";",
+	# 	print "session: " + session[0],
 
-	else:
-		print "skipped"
+	# else:
+	# 	print "skipped"
+
+	print "bill numbers: " + ",".join(bill_nums) + ";",
+	# print "date: " + " ".join(date) + ";",
+	# print "legislature: " + legislature[0] + ";",
+	# print "session: " + session[0],
 
 #from d/m/y to m/d/y
 #month name from spanish to english
