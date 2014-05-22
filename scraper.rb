@@ -55,6 +55,7 @@ class VotingLowChamber < GenericStorage
 
     # process a single bill
     @response['bills'].each do |bill|
+      GC.start
       process_by_bill bill['uid']
     end
 
@@ -74,8 +75,6 @@ class VotingLowChamber < GenericStorage
     if response_voting.nil?
       puts "Skip " + bill_id
     else
-      puts "Processing " + bill_id
-
       if response_voting['Votacion'].is_a? Array
         response_voting['Votacion'].each do |voting|
           record = get_info voting
