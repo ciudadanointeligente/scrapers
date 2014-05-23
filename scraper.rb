@@ -46,6 +46,12 @@ class VotingLowChamber < GenericStorage
     @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?per_page=200'
   end
 
+  def run
+    while !@billit_current_location.nil? do
+      process
+    end
+  end
+
   def process
     @response = HTTParty.get(@billit_current_location, :content_type => :json)
     @response = JSON.parse(@response.body)
@@ -64,7 +70,7 @@ class VotingLowChamber < GenericStorage
       @billit_current_location = @response['links'][1]['href']
       process
     else
-      exit
+      @billit_current_location = nil
     end
   end
 
@@ -125,4 +131,4 @@ class VotingLowChamber < GenericStorage
 end
 
 # Runner
-VotingLowChamber.new.process
+VotingLowChamber.new.run
