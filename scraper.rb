@@ -43,7 +43,7 @@ class VotingLowChamber < GenericStorage
   def initialize()
     super()
     @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?per_page=100'
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?per_page=200&fields=uid'
   end
 
   def run
