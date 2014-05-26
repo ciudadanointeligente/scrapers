@@ -61,7 +61,6 @@ class VotingLowChamber < GenericStorage
 
     # process a single bill
     @response['bills'].each do |bill|
-      GC.start
       process_by_bill bill['uid']
     end
 
@@ -75,6 +74,7 @@ class VotingLowChamber < GenericStorage
   end
 
   def process_by_bill bill_id
+    sleep 2
     response_voting = HTTParty.get(@location + bill_id, :content_type => :xml)
     response_voting = response_voting['Votaciones']
 
