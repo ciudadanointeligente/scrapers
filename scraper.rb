@@ -36,12 +36,19 @@ class GenericStorage
       puts "Skipping already saved record " + record['uid']
     end
   end
+
+  def debug record
+    puts '<-----debug-----'
+    p record
+    puts '------debug---/>'
+  end
 end
 
 # The real thing
 # class VotingHighChamber < GenericStorage
 #   def initialize()
 #     super()
+#     @chamber = 'Senado'
 #     @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
 #     @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?per_page=200&fields=uid'
 #   end
@@ -50,6 +57,7 @@ end
 class VotingLowChamber < GenericStorage
   def initialize()
     super()
+    @chamber = 'C.Diputados'
     @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
     @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
   end
@@ -64,7 +72,6 @@ class VotingLowChamber < GenericStorage
     @response = HTTParty.get(@billit_current_location, :content_type => :json)
     @response = JSON.parse(@response.body)
 
-    # Debug
     puts "Processing page " + @response['current_page'].to_s + " of " + @response['total_pages'].to_s
 
     # process a single bill
@@ -82,7 +89,7 @@ class VotingLowChamber < GenericStorage
   end
 
   def process_by_bill bill_id
-    sleep 2
+    sleep 1
     response_voting = HTTParty.get(@location + bill_id, :content_type => :xml)
     response_voting = response_voting['Votaciones']
 
@@ -93,16 +100,12 @@ class VotingLowChamber < GenericStorage
         response_voting['Votacion'].each do |voting|
           record = get_info voting
           post record
-          # puts '<---------------'
-          # p record
-          # puts '--------------/>'
+          # debug record  #DEBUG
         end
       else
         record = get_info response_voting['Votacion']
         post record
-        # puts '<---------------'
-        # p record
-        # puts '--------------/>'
+        # debug record  #DEBUG
       end
     end
   end
@@ -110,6 +113,7 @@ class VotingLowChamber < GenericStorage
   def get_info voting
     record = {
       'uid' => voting['ID'],
+      'chamber' => @chamber,
       'date' => voting['Fecha'],
       'type_content' => voting['Tipo']['__content__'],
       'type_code' => voting['Tipo']['Codigo'],
