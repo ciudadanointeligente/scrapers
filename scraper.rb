@@ -27,7 +27,7 @@ class GenericStorage
     post record
   end
 
-  def post record
+  def post_to_morph record
     # Save in morph.io
     if ((ScraperWiki.select("* from data where `uid`='#{record['uid']}'").empty?) rescue true)
       ScraperWiki.save_sqlite(['uid'], record)
@@ -35,6 +35,11 @@ class GenericStorage
     else
       puts "Skipping already saved record " + record['uid']
     end
+  end
+
+  def post record
+    puts "Adds record for " + record['bill_id']
+    HTTParty.post(@middleware, {:body => record.to_json, :headers => { 'Content-Type' => 'application/json' } })
   end
 
   def debug record
@@ -58,6 +63,7 @@ class VotingLowChamber < GenericStorage
   def initialize()
     super()
     @chamber = 'C.Diputados'
+    @middleware = 'http://middleware.congresoabierto.cl/votes'
     @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
     @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
   end
