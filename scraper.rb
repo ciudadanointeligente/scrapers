@@ -31,7 +31,7 @@ class GenericStorage
     # Save in morph.io
     if ((ScraperWiki.select("* from data where `uid`='#{record['uid']}'").empty?) rescue true)
       ScraperWiki.save_sqlite(['uid'], record)
-      puts "Adds new record " + record['uid']
+      puts "Adds record for " + record['bill_id']
     else
       puts "Skipping already saved record " + record['uid']
     end
@@ -39,11 +39,19 @@ class GenericStorage
 end
 
 # The real thing
+# class VotingHighChamber < GenericStorage
+#   def initialize()
+#     super()
+#     @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
+#     @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?per_page=200&fields=uid'
+#   end
+# end
+
 class VotingLowChamber < GenericStorage
   def initialize()
     super()
     @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?per_page=200&fields=uid'
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
   end
 
   def run
@@ -132,3 +140,4 @@ end
 
 # Runner
 VotingLowChamber.new.run
+# VotingHighChamber.new.run
