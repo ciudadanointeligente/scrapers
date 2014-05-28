@@ -142,7 +142,7 @@ end
 class VotingMassStorage < GenericStorage
   def initialize()
     super()
-    @middleware = 'http://middleware.congresoabierto.cl/votes'
+    @middleware = 'http://middleware.congresoabierto.cl/votes.json'
   end
 
   def process
