@@ -50,15 +50,6 @@ class GenericStorage
 end
 
 # The real thing
-# class VotingHighChamber < GenericStorage
-#   def initialize()
-#     super()
-#     @chamber = 'Senado'
-#     @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
-#     @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?per_page=200&fields=uid'
-#   end
-# end
-
 class VotingLowChamber < GenericStorage
   def initialize()
     super()
@@ -148,6 +139,54 @@ class VotingLowChamber < GenericStorage
   end
 end
 
+class VotingMassStorage < GenericStorage
+  def initialize()
+    super()
+    @middleware = 'http://middleware.congresoabierto.cl/votes'
+  end
+
+  def process
+    @response = HTTParty.get(@middleware, :content_type => :json)
+    @response = JSON.parse(@response.body)
+
+    @response.each do |voting|
+      record = get_info voting
+      post_to_morph record
+    end
+  end
+
+  def get_info voting
+    record = {
+      'uid' => voting['uid'],
+      'chamber' => voting['chamber'],
+      'date' => voting['date'],
+      'type_content' => voting['type_content'],
+      'type_code' => voting['type_code'],
+      'result_content' => voting['result_content'],
+      'result_code' => voting['result_code'],
+      'quorum_content' => voting['quorum_content'],
+      'quorum_code' => voting['quorum_code'],
+      'session_id' => voting['session_id'],
+      'session_number' => voting['session_number'],
+      'session_date' => voting['session_date'],
+      'session_type_content' => voting['session_type_content'],
+      'session_type_code' => voting['session_type_code'],
+      'bill_id' => voting['bill_id'],
+      'article' => if voting['article'].nil? then '' else voting['article'].tr("\n","") end,
+      'procedure_content' => if voting['procedure_content'].nil? then '' else voting['procedure_content'] end,
+      'procedure_code' => if voting['procedure_code'].nil? then '' else voting['procedure_code'] end,
+      'report_content' => if voting['report_content'].nil? then '' else voting['report_content'] end,
+      'report_code' => if voting['report_code'].nil? then '' else voting['report_code'] end,
+      'total_affirmative' => voting['total_affirmative'],
+      'total_negative' => voting['total_negative'],
+      'total_abstentions' => voting['total_abstentions'],
+      'total_dispensed' => voting['total_dispensed'],
+      'date_scraped' => Date.today.to_s
+    }
+    return record
+  end
+end
+
 # Runner
-VotingLowChamber.new.run
-# VotingHighChamber.new.run
+VotingMassStorage.new.process
+# VotingLowChamber.new.run  #The real scraper, but in morph.io it doesn't work because a memory allocation bug in ruby 1.9.3
