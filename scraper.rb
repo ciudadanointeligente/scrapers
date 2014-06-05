@@ -31,15 +31,15 @@ class GenericStorage
     # Save in morph.io
     if ((ScraperWiki.select("* from data where `uid`='#{record['uid']}'").empty?) rescue true)
       ScraperWiki.save_sqlite(['uid'], record)
-      puts "Adds record for " + record['bill_id']
+      puts "Adds record " + record['uid'] + " for " + record['bill_id']
     else
       puts "Skipping already saved record " + record['uid']
     end
   end
 
   def post record
-    puts "Adds record for " + record['bill_id']
     HTTParty.post(@middleware, {:body => record.to_json, :headers => { 'Content-Type' => 'application/json' } })
+    puts "Adds record " + record['uid'] + " for " + record['bill_id']
   end
 
   def debug record
@@ -54,40 +54,70 @@ class VotingLowChamber < GenericStorage
   def initialize()
     super()
     @chamber = 'C.Diputados'
+    @location_vote_general = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin='
+    @location_vote_detail = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID='
     @middleware = 'http://middleware.congresoabierto.cl/votes'
-    @location = 'http://opendata.camara.cl/wscamaradiputados.asmx/Votaciones_Boletin?prmBoletin='
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
-  end
-
-  def run
-    while !@billit_current_location.nil? do
-      process
-    end
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=100'
   end
 
   def process
-    @response = HTTParty.get(@billit_current_location, :content_type => :json)
-    @response = JSON.parse(@response.body)
+    while !@billit_current_location.nil? do
+      @response = HTTParty.get(@billit_current_location, :content_type => :json)
+      @response = JSON.parse(@response.body)
 
-    puts "Processing page " + @response['current_page'].to_s + " of " + @response['total_pages'].to_s
+      puts "Processing page " + @response['current_page'].to_s + " of " + @response['total_pages'].to_s
 
-    # process a single bill
-    @response['bills'].each do |bill|
-      process_by_bill bill['uid']
+      # process a single bill
+      @response['bills'].each do |bill|
+        process_by_bill bill['uid']
+      end
+
+      # obtain the next set of bills if exist
+      if @response['links'][1]['rel'] == 'next'
+        @billit_current_location = @response['links'][1]['href']
+      else
+        @billit_current_location = nil
+      end
+    end
+  end
+
+  def get_details_of_voting voting_id
+    response = HTTParty.get(@location_vote_detail + voting_id, :content_type => :xml)
+    response_votes = response['Votacion']['Votos']['Voto']
+    response_pair_up = response['Votacion']['Pareos']['Pareo']
+    
+    @votes = Array.new
+    response_votes.each do |single_vote|
+      vote = Hash.new
+      vote['uid'] = single_vote['Diputado']['DIPID']
+      vote['lastname'] = single_vote['Diputado']['Nombre']
+      vote['parental_surname'] = single_vote['Diputado']['Apellido_Paterno']
+      vote['maternal_surname'] = single_vote['Diputado']['Apellido_Materno']
+      vote['option_content'] = single_vote['Opcion']['__content__']
+      vote['option_code'] = single_vote['Opcion']['Codigo']
+      @votes << vote
     end
 
-    # obtain the next set of bills if exist
-    if @response['links'][1]['rel'] == 'next'
-      @billit_current_location = @response['links'][1]['href']
-      process
-    else
-      @billit_current_location = nil
+    @pair_ups = Array.new
+    response_pair_up.each do |single_pair_up|
+      pair_up = Hash.new
+      pair_up['congressman1'] = Hash.new
+      pair_up['congressman1']['uid'] = single_pair_up['Diputado1']['DIPID']
+      pair_up['congressman1']['lastname'] = single_pair_up['Diputado1']['Nombre']
+      pair_up['congressman1']['parental_surname'] = single_pair_up['Diputado1']['Apellido_Paterno']
+      pair_up['congressman1']['maternal_surname'] = single_pair_up['Diputado1']['Apellido_Materno']
+      pair_up['congressman2'] = Hash.new
+      pair_up['congressman2']['uid'] = single_pair_up['Diputado2']['DIPID']
+      pair_up['congressman2']['lastname'] = single_pair_up['Diputado2']['Nombre']
+      pair_up['congressman2']['parental_surname'] = single_pair_up['Diputado2']['Apellido_Paterno']
+      pair_up['congressman2']['maternal_surname'] = single_pair_up['Diputado2']['Apellido_Materno']
+      @pair_ups << pair_up
     end
   end
 
   def process_by_bill bill_id
     sleep 1
-    response_voting = HTTParty.get(@location + bill_id, :content_type => :xml)
+    response_voting = HTTParty.get(@location_vote_general + bill_id, :content_type => :xml)
     response_voting = response_voting['Votaciones']
 
     if response_voting.nil?
@@ -95,19 +125,21 @@ class VotingLowChamber < GenericStorage
     else
       if response_voting['Votacion'].is_a? Array
         response_voting['Votacion'].each do |voting|
-          record = get_info voting
+          get_details_of_voting voting['ID']
+          record = get_info voting, @votes, @pair_ups
           post record
           # debug record  #DEBUG
         end
       else
-        record = get_info response_voting['Votacion']
+        get_details_of_voting response_voting['Votacion']['ID']
+        record = get_info response_voting['Votacion'], @votes, @pair_ups
         post record
         # debug record  #DEBUG
       end
     end
   end
 
-  def get_info voting
+  def get_info voting, votes, pair_ups
     record = {
       'uid' => voting['ID'],
       'chamber' => @chamber,
@@ -133,6 +165,8 @@ class VotingLowChamber < GenericStorage
       'total_negative' => voting['TotalNegativos'],
       'total_abstentions' => voting['TotalAbstenciones'],
       'total_dispensed' => voting['TotalDispensados'],
+      'votes' => votes,
+      'pair_ups' => pair_ups,
       'date_scraped' => Date.today.to_s
     }
     return record
@@ -188,5 +222,5 @@ class VotingMassStorage < GenericStorage
 end
 
 # Runner
-VotingMassStorage.new.process
-# VotingLowChamber.new.run  #The real scraper, but in morph.io it doesn't work because a memory allocation bug in ruby 1.9.3
+# VotingMassStorage.new.process # Store the values into a middleware service of ciudadano inteligente
+VotingLowChamber.new.process  # The real scraper, but in morph.io it doesn't work because a memory allocation bug in ruby 1.9.3
