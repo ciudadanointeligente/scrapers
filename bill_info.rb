@@ -18,10 +18,12 @@ class BillInfo < StorageableInfo
 		@format = 'application/json'
 	end
 
-	def doc_locations
-		bulletins = 9399.downto(1)
-		bulletins.map {|b| @location + b.to_s}
-	end
+  def doc_locations
+    doc = HTTParty.get(@update_location + @last_update).body
+    xml = Nokogiri::XML(doc)
+    projects = xml.xpath('//boletin').map {|x| x.text}
+    locations = projects.map {|x| @location + x.split('-')[0]}
+  end
 
 	def save bill
 		result_code = HTTParty.get([@API_url, @model, @id].join("/"), headers: {"Accept"=>"*/*"}).code#{|response, request, result| result.code }
