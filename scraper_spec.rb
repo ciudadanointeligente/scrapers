@@ -51,6 +51,7 @@ describe BillInfo do
     formatted_info = bill_info.format info
     expect(formatted_info.motions).to be_an Array
     expect(formatted_info.motions.count).to eq(2)
+    expect(formatted_info.motions.first.organization).to eq("Senado")
     expect(formatted_info.motions.first.vote_events.first.counts.first).to be_an BillitCount
     expect(formatted_info.motions.first.vote_events.first.counts.count).to eq(4)
     expect(formatted_info.motions.first.vote_events.first.votes.first).to be_a BillitVote

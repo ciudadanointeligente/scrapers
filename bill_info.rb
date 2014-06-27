@@ -120,6 +120,7 @@ class BillInfo < StorageableInfo
     motions_data = [motions_data] if motions_data.class == Hash
     motions_data.each do |motion_data|
       motion = BillitMotion.new
+      motion.organization = "Senado"
       motion.date = motion_data["FECHA"]
       motion.text = motion_data["TEMA"]
       motion.requirement = motion_data["QUORUM"]
