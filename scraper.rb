@@ -1,10 +1,8 @@
 require 'rubygems'
-# require 'scraperwiki'
 require 'httparty'
 require 'libxml'
 require 'open-uri'
 require 'json'
-# require 'i18n'
 
 # Scrapable classes
 module RestfulApiMethods
@@ -28,14 +26,13 @@ class GenericStorage
   end
 
   def post record
-    HTTParty.post(@billit, {:body => record.to_json, :headers => { 'Content-Type' => 'application/json' } })
+    HTTParty.post(@billit + @bill_id + '.json', body: {motions: record})
     puts "Adds record " + record['uid'] + " for " + record['bill_id']
   end
 
   def debug record
     puts '<-----debug-----'
-    puts 'bill: ' + @bill_id
-    puts '----------------'
+    puts @bill_id
     p record
     puts '------debug---/>'
   end
@@ -49,7 +46,7 @@ class VotingLowChamber < GenericStorage
     @location_vote_general = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin='
     @location_vote_detail = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID='
     @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=50'
-    @billit = 'http://billit.ciudadanointeligente.org/bills'
+    @billit = 'http://billit.ciudadanointeligente.org/bills/'
     @bill_id = String.new
   end
 
@@ -77,39 +74,58 @@ class VotingLowChamber < GenericStorage
   def get_details_of_voting voting_id
     response = HTTParty.get(@location_vote_detail + voting_id, :content_type => :xml)
     response_votes = response['Votacion']['Votos']['Voto']
-    response_pair_up = response['Votacion']['Pareos']['Pareo']
+    response_pair_up = if response['Votacion']['Pareos'].nil? then nil else response['Votacion']['Pareos']['Pareo'] end
     @votes = Array.new
     response_votes.each do |single_vote|
       vote = Hash.new
       vote['voter_id'] = single_vote['Diputado']['Apellido_Paterno'] + " " + single_vote['Diputado']['Apellido_Materno'] + ", " + single_vote['Diputado']['Nombre']
       case single_vote['Opcion']['Codigo']
       when '0' #Negativo
-        vote['option'] = "no"
+        vote['option'] = "NO" #no
       when '1' #Afirmativo
-        vote['option'] = "yes"
+        vote['option'] = "SI" #yes
       when '2' #Abstencion
-        vote['option'] = "abstain"
+        vote['option'] = "ABSTENCION" #abstain
       else
         vote['option'] = ""
       end
       @votes << vote
     end
 
-    @pair_ups = Array.new
-    i = 1
-    response_pair_up.each do |single_pair_up|
-      # first pair
-      pair_up1 = Hash.new
-      pair_up1['voter_id'] = single_pair_up['Diputado1']['Apellido_Paterno'] + " " + single_pair_up['Diputado1']['Apellido_Materno'] + ", " + single_pair_up['Diputado1']['Nombre']
-      pair_up1['option'] = "paired, set " + i.to_s
-      @pair_ups << pair_up1
+    if !response_pair_up.nil?
+      if response_pair_up.is_a? Array
+        @pair_ups = Array.new
+        i = 1
+        response_pair_up.each do |single_pair_up|
+          # first pair
+          pair_up1 = Hash.new
+          pair_up1['voter_id'] = single_pair_up['Diputado1']['Apellido_Paterno'] + " " + single_pair_up['Diputado1']['Apellido_Materno'] + ", " + single_pair_up['Diputado1']['Nombre']
+          pair_up1['option'] = "PAREO " + i.to_s #paired
+          @pair_ups << pair_up1
 
-      # second pair
-      pair_up2 = Hash.new
-      pair_up2['voter_id'] = single_pair_up['Diputado2']['Apellido_Paterno'] + " " + single_pair_up['Diputado2']['Apellido_Materno'] + ", " + single_pair_up['Diputado2']['Nombre']
-      pair_up2['option'] = "paired, set " + i.to_s
-      @pair_ups << pair_up2
-      i = i + 1
+          # second pair
+          pair_up2 = Hash.new
+          pair_up2['voter_id'] = single_pair_up['Diputado2']['Apellido_Paterno'] + " " + single_pair_up['Diputado2']['Apellido_Materno'] + ", " + single_pair_up['Diputado2']['Nombre']
+          pair_up2['option'] = "PAREO " + i.to_s
+          @pair_ups << pair_up2
+          i = i + 1
+        end
+      else
+        single_pair_up = response_pair_up
+        @pair_ups = Array.new
+        i = 1
+        # first pair
+        pair_up1 = Hash.new
+        pair_up1['voter_id'] = single_pair_up['Diputado1']['Apellido_Paterno'] + " " + single_pair_up['Diputado1']['Apellido_Materno'] + ", " + single_pair_up['Diputado1']['Nombre']
+        pair_up1['option'] = "PAREO " + i.to_s #paired
+        @pair_ups << pair_up1
+
+        # second pair
+        pair_up2 = Hash.new
+        pair_up2['voter_id'] = single_pair_up['Diputado2']['Apellido_Paterno'] + " " + single_pair_up['Diputado2']['Apellido_Materno'] + ", " + single_pair_up['Diputado2']['Nombre']
+        pair_up2['option'] = "PAREO " + i.to_s
+        @pair_ups << pair_up2
+      end
     end
   end
 
@@ -125,20 +141,19 @@ class VotingLowChamber < GenericStorage
         response_voting['Votacion'].each do |voting|
           get_details_of_voting voting['ID']
           record = get_info voting, @votes, @pair_ups
-          # post record
-          debug record  #DEBUG
+          post record
+          # debug record  #DEBUG
         end
       else
         get_details_of_voting response_voting['Votacion']['ID']
         record = get_info response_voting['Votacion'], @votes, @pair_ups
-        # post record
-        debug record  #DEBUG
+        post record
+        # debug record  #DEBUG
       end
     end
   end
 
   def get_info voting, votes, pair_ups
-
     @bill_id = voting['Boletin']
 
     vote_events = [
@@ -175,7 +190,6 @@ class VotingLowChamber < GenericStorage
       'session' => voting['Sesion']['ID'],
       'vote_events' => vote_events
     }
-
     return record
   end
 end
