@@ -27,7 +27,7 @@ class GenericStorage
 
   def post record
     HTTParty.post(@billit + @bill_id + '.json', body: {motions: record})
-    puts "Adds record " + record['uid'] + " for " + record['bill_id']
+    puts "adds record for " + @bill_id
   end
 
   def debug record
@@ -45,7 +45,7 @@ class VotingLowChamber < GenericStorage
     @chamber = 'C.Diputados'
     @location_vote_general = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin='
     @location_vote_detail = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID='
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=50'
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=100'
     @billit = 'http://billit.ciudadanointeligente.org/bills/'
     @bill_id = String.new
   end
