@@ -1,10 +1,10 @@
 require 'rubygems'
-require 'scraperwiki'
+# require 'scraperwiki'
 require 'httparty'
 require 'libxml'
 require 'open-uri'
 require 'json'
-require 'i18n'
+# require 'i18n'
 
 # Scrapable classes
 module RestfulApiMethods
@@ -48,7 +48,7 @@ class VotingLowChamber < GenericStorage
     @chamber = 'C.Diputados'
     @location_vote_general = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin='
     @location_vote_detail = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID='
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=100'
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=50'
     @billit = 'http://billit.ciudadanointeligente.org/bills'
     @bill_id = String.new
   end
@@ -78,17 +78,16 @@ class VotingLowChamber < GenericStorage
     response = HTTParty.get(@location_vote_detail + voting_id, :content_type => :xml)
     response_votes = response['Votacion']['Votos']['Voto']
     response_pair_up = response['Votacion']['Pareos']['Pareo']
-
     @votes = Array.new
     response_votes.each do |single_vote|
       vote = Hash.new
       vote['voter_id'] = single_vote['Diputado']['Apellido_Paterno'] + " " + single_vote['Diputado']['Apellido_Materno'] + ", " + single_vote['Diputado']['Nombre']
       case single_vote['Opcion']['Codigo']
-      when 0 #Negativo
+      when '0' #Negativo
         vote['option'] = "no"
-      when 1 #Afirmativo
+      when '1' #Afirmativo
         vote['option'] = "yes"
-      when 2 #Abstencion
+      when '2' #Abstencion
         vote['option'] = "abstain"
       else
         vote['option'] = ""
@@ -120,7 +119,7 @@ class VotingLowChamber < GenericStorage
     response_voting = response_voting['Votaciones']
 
     if response_voting.nil?
-      puts "Skip " + bill_id
+      puts "skip " + bill_id
     else
       if response_voting['Votacion'].is_a? Array
         response_voting['Votacion'].each do |voting|
@@ -144,7 +143,7 @@ class VotingLowChamber < GenericStorage
 
     vote_events = [
       {
-        counts = [
+        'counts' => [
           {
             'option' => "yes",
             'value' => voting['TotalAfirmativos'].to_i
@@ -162,7 +161,7 @@ class VotingLowChamber < GenericStorage
             'value' => pair_ups.count
           }
         ],
-        votes = votes + pair_ups #all votes, from options yes, no and abstain + paired
+        'votes' => votes + pair_ups #all votes, from options yes, no and abstain + paired
       }
     ]
 
