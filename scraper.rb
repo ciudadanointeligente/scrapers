@@ -26,6 +26,10 @@ class GenericStorage
   end
 
   def post record
+    motions = HTTParty.get(@billit + @bill_id + '.json', :content_type => :json)
+    motions = JSON.parse(motions.body)['motions']
+    record = record + motions
+
     HTTParty.post(@billit + @bill_id + '.json', body: {motions: record})
     puts "adds record for " + @bill_id
   end
