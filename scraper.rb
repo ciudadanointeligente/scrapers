@@ -35,9 +35,13 @@ class GenericStorage
   end
 
   def debug record
+    motions = HTTParty.get(@billit + @bill_id + '.json', :content_type => :json)
+    motions = JSON.parse(motions.body)['motions']
+    motions << record
+
     puts '<-----debug-----'
     puts @bill_id
-    p record
+    p motions
     puts '------debug---/>'
   end
 end
@@ -145,14 +149,14 @@ class VotingLowChamber < GenericStorage
         response_voting['Votacion'].each do |voting|
           get_details_of_voting voting['ID']
           record = get_info voting, @votes, @pair_ups
-          post record
-          # debug record  #DEBUG
+          # post record
+          debug record  #DEBUG
         end
       else
         get_details_of_voting response_voting['Votacion']['ID']
         record = get_info response_voting['Votacion'], @votes, @pair_ups
-        post record
-        # debug record  #DEBUG
+        # post record
+        debug record  #DEBUG
       end
     end
   end
@@ -187,7 +191,7 @@ class VotingLowChamber < GenericStorage
     # motion
     record = {
       'organization' => @chamber,
-      'text' => if voting['Articulo'].nil? then '' else voting['Articulo'] end,
+      'text' => if voting['Articulo'].nil? then 'Sin título' else voting['Articulo'] end,
       'date' => voting['Fecha'],
       'requirement' => voting['Quorum']['__content__'],
       'result' => voting['Resultado']['__content__'],
