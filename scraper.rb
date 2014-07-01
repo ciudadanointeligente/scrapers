@@ -32,7 +32,6 @@ class GenericStorage
     bill = Billit::BillUpdate.get @billit + @bill_id, 'application/json'
     bill.motions = [] if bill.motions.nil?
     bill.motions << record
-    # byebug
     bill.put @billit + @bill_id, 'application/json'
     puts "adds record for " + @bill_id
   end
@@ -166,7 +165,7 @@ class VotingLowChamber < GenericStorage
     motion = BillitMotion.new
     motion.organization = @chamber
     motion.date = voting['Fecha']
-    motion.text = if voting['Articulo'].nil? then 'Sin título' else voting['Articulo'] end
+    motion.text = if voting['Articulo'].nil? then 'Sin título' else voting['Articulo'].strip end
     motion.requirement = voting['Quorum']['__content__']
     motion.result = voting['Resultado']['__content__']
     motion.session = voting['Sesion']['ID']
@@ -180,14 +179,17 @@ class VotingLowChamber < GenericStorage
     count.value = voting['TotalAfirmativos'].to_i
     vote_event.counts << count
 
+    count = BillitCount.new
     count.option = "NO"
     count.value = voting['TotalNegativos'].to_i
     vote_event.counts << count
 
+    count = BillitCount.new
     count.option = "ABSTENCION"
     count.value = voting['TotalAbstenciones'].to_i
     vote_event.counts << count
 
+    count = BillitCount.new
     count.option = "PAREO"
     count.value = pair_ups.count
     vote_event.counts << count
