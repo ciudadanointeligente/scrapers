@@ -1,7 +1,9 @@
 require 'rubygems'
 require 'httparty'
 require 'json'
+require 'byebug'
 require 'billit_representers/models/bill'
+require 'billit_representers/models/motion'
 require 'libxml'
 require 'open-uri'
 
@@ -30,18 +32,15 @@ class GenericStorage
     bill = Billit::Bill.get @billit + @bill_id, 'application/json'
     bill.motions = [] if bill.motions.nil?
     bill.motions << record
+    # byebug
     bill.put @billit + @bill_id, 'application/json'
     puts "adds record for " + @bill_id
   end
 
   def debug record
-    bill = Billit::Bill.get @billit + @bill_id, 'application/json'
-    bill.motions = [] if bill.motions.nil?
-    bill.motions << record
-
     puts '<-----debug-----'
     puts @bill_id
-    p motions
+    p record
     puts '------debug---/>'
   end
 end
