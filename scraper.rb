@@ -1,8 +1,9 @@
 require 'rubygems'
 require 'httparty'
+require 'json'
+require 'billit_representers/models/bill'
 require 'libxml'
 require 'open-uri'
-require 'json'
 
 # Scrapable classes
 module RestfulApiMethods
@@ -26,18 +27,17 @@ class GenericStorage
   end
 
   def post record
-    motions = HTTParty.get(@billit + @bill_id + '.json', :content_type => :json)
-    motions = JSON.parse(motions.body)['motions']
-    motions << record
-
-    HTTParty.post(@billit + @bill_id + '.json', body: {motions: motions})
+    bill = Billit::Bill.get @billit + @bill_id, 'application/json'
+    bill.motions = [] if bill.motions.nil?
+    bill.motions << record
+    bill.put @billit + @bill_id, 'application/json'
     puts "adds record for " + @bill_id
   end
 
   def debug record
-    motions = HTTParty.get(@billit + @bill_id + '.json', :content_type => :json)
-    motions = JSON.parse(motions.body)['motions']
-    motions << record
+    bill = Billit::Bill.get @billit + @bill_id, 'application/json'
+    bill.motions = [] if bill.motions.nil?
+    bill.motions << record
 
     puts '<-----debug-----'
     puts @bill_id
@@ -89,11 +89,11 @@ class VotingLowChamber < GenericStorage
       vote['voter_id'] = single_vote['Diputado']['Apellido_Paterno'] + " " + single_vote['Diputado']['Apellido_Materno'] + ", " + single_vote['Diputado']['Nombre']
       case single_vote['Opcion']['Codigo']
       when '0' #Negativo
-        vote['option'] = "NO" #no
+        vote['option'] = "NO"
       when '1' #Afirmativo
-        vote['option'] = "SI" #yes
+        vote['option'] = "SI"
       when '2' #Abstencion
-        vote['option'] = "ABSTENCION" #abstain
+        vote['option'] = "ABSTENCION"
       else
         vote['option'] = ""
       end
@@ -149,14 +149,14 @@ class VotingLowChamber < GenericStorage
         response_voting['Votacion'].each do |voting|
           get_details_of_voting voting['ID']
           record = get_info voting, @votes, @pair_ups
-          # post record
-          debug record  #DEBUG
+          post record
+          # debug record  #DEBUG
         end
       else
         get_details_of_voting response_voting['Votacion']['ID']
         record = get_info response_voting['Votacion'], @votes, @pair_ups
-        # post record
-        debug record  #DEBUG
+        post record
+        # debug record  #DEBUG
       end
     end
   end
@@ -164,41 +164,43 @@ class VotingLowChamber < GenericStorage
   def get_info voting, votes, pair_ups
     @bill_id = voting['Boletin']
 
-    vote_events = [
-      {
-        'counts' => [
-          {
-            'option' => "yes",
-            'value' => voting['TotalAfirmativos'].to_i
-          },
-          {
-            'option' => "no",
-            'value' => voting['TotalNegativos'].to_i
-          },
-          {
-            'option' => "abstain",
-            'value' => voting['TotalAbstenciones'].to_i
-          },
-          {
-            'option' => "paired",
-            'value' => pair_ups.count
-          }
-        ],
-        'votes' => votes + pair_ups #all votes, from options yes, no and abstain + paired
-      }
-    ]
+    motion = BillitMotion.new
+    motion.organization = @chamber
+    motion.date = voting['Fecha']
+    motion.text = if voting['Articulo'].nil? then 'Sin título' else voting['Articulo'] end
+    motion.requirement = voting['Quorum']['__content__']
+    motion.result = voting['Resultado']['__content__']
+    motion.session = voting['Sesion']['ID']
+    motion.vote_events = []
 
-    # motion
-    record = {
-      'organization' => @chamber,
-      'text' => if voting['Articulo'].nil? then 'Sin título' else voting['Articulo'] end,
-      'date' => voting['Fecha'],
-      'requirement' => voting['Quorum']['__content__'],
-      'result' => voting['Resultado']['__content__'],
-      'session' => voting['Sesion']['ID'],
-      'vote_events' => vote_events
-    }
-    return record
+    vote_event = BillitVoteEvent.new
+    #Counts
+    vote_event.counts = []
+    count = BillitCount.new
+    count.option = "SI"
+    count.value = voting['TotalAfirmativos'].to_i
+    vote_event.counts << count
+    count.option = "NO"
+    count.value = voting['TotalNegativos'].to_i
+    vote_event.counts << count
+    count.option = "ABSTENCION"
+    count.value = voting['TotalAbstenciones'].to_i
+    vote_event.counts << count
+    count.option = "PAREO"
+    count.value = pair_ups.count
+    vote_event.counts << count
+
+    #Votes
+    vote_event.votes = []
+    votes_array = votes + pair_ups
+    votes_array.each do |single_vote|
+      vote = BillitVote.new
+      vote.voter_id = single_vote["voter_id"]
+      vote.option = single_vote["option"]
+      vote_event.votes << vote
+    end
+    motion.vote_events << vote_event
+    return motion
   end
 end
 
