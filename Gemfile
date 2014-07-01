@@ -5,4 +5,4 @@ source 'http://rubygems.org'
  gem 'httparty'
  gem 'libxml-ruby'
  gem 'byebug'
- gem 'billit_representers'
+ gem 'billit_representers', "0.9.7"
