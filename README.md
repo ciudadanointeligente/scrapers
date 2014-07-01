@@ -1,7 +1,10 @@
 pmocl-voting-storage
 ====================
 
-For use in the (awesome) [morph.io](http://morph.io/) platform.
+## Instructions
+You have 2 options, you can run in FULL MODE for all the bills, withouts arguments, or you can run using bill_ids, example:
+
+    bundle exec ruby scraper.rb 1-07 6927-05 6989-13 9155-07
 
 
 ### Everything else:
