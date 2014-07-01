@@ -2,7 +2,7 @@ require 'rubygems'
 require 'httparty'
 require 'json'
 require 'byebug'
-require 'billit_representers/models/bill'
+require 'billit_representers/models/bill_update'
 require 'billit_representers/models/motion'
 require 'libxml'
 require 'open-uri'
@@ -29,7 +29,7 @@ class GenericStorage
   end
 
   def post record
-    bill = Billit::Bill.get @billit + @bill_id, 'application/json'
+    bill = Billit::BillUpdate.get @billit + @bill_id, 'application/json'
     bill.motions = [] if bill.motions.nil?
     bill.motions << record
     # byebug
@@ -179,12 +179,15 @@ class VotingLowChamber < GenericStorage
     count.option = "SI"
     count.value = voting['TotalAfirmativos'].to_i
     vote_event.counts << count
+
     count.option = "NO"
     count.value = voting['TotalNegativos'].to_i
     vote_event.counts << count
+
     count.option = "ABSTENCION"
     count.value = voting['TotalAbstenciones'].to_i
     vote_event.counts << count
+
     count.option = "PAREO"
     count.value = pair_ups.count
     vote_event.counts << count
