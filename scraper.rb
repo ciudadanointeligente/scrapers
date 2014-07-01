@@ -93,7 +93,7 @@ class VotingLowChamber < GenericStorage
       when '2' #Abstencion
         vote['option'] = "ABSTENCION"
       else
-        vote['option'] = ""
+        vote['option'] = "Sin información"
       end
       @votes << vote
     end
@@ -209,4 +209,12 @@ class VotingLowChamber < GenericStorage
 end
 
 # Runner
-VotingLowChamber.new.process
+if ARGV.empty?
+  puts "initialize the full mode (all the bills)"
+  VotingLowChamber.new.process
+else
+  ARGV.each do |id|
+    puts "initialize motion per bill #{id}"
+    VotingLowChamber.new.process_by_bill id
+  end
+end
