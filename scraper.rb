@@ -29,18 +29,23 @@ class GenericStorage
   end
 
   def post record
-    bill = Billit::BillUpdate.get @billit + @bill_id, 'application/json'
-    bill.motions = [] if bill.motions.nil?
-    bill.motions << record
-    bill.put @billit + @bill_id, 'application/json'
-    puts "adds record for " + @bill_id
+    f = File.open('post_errors.log', 'a')
+    begin
+      bill = Billit::BillUpdate.get @billit + @bill_id, 'application/json'
+      bill.motions = [] if bill.motions.nil?
+      bill.motions << record
+      bill.put @billit + @bill_id, 'application/json'
+      puts "adds record for " + @bill_id
+    rescue Exception=>e
+      f.puts @bill_id
+      puts e
+    end
   end
 
   def debug record
-    puts '<-----debug-----'
-    puts @bill_id
-    p record
-    puts '------debug---/>'
+    puts '<----- debug -----'
+    puts record.text + " of bill " + @bill_id
+    puts '------ debug ---/>'
   end
 end
 
