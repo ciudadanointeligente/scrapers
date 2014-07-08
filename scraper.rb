@@ -154,14 +154,14 @@ class VotingLowChamber < GenericStorage
           response_voting['Votacion'].each do |voting|
             get_details_of_voting voting['ID']
             record = get_info voting, @votes, @pair_ups
-            # post record
-            debug record  #DEBUG
+            post record
+            # debug record  #DEBUG
           end
         else
           get_details_of_voting response_voting['Votacion']['ID']
           record = get_info response_voting['Votacion'], @votes, @pair_ups
-          # post record
-          debug record  #DEBUG
+          post record
+          # debug record  #DEBUG
         end
       end
     rescue Exception=>e
