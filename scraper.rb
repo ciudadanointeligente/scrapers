@@ -51,7 +51,7 @@ class VotingLowChamber < GenericStorage
     @chamber = 'C.Diputados'
     @location_vote_general = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin='
     @location_vote_detail = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID='
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=100'
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
     @billit = 'http://billit.ciudadanointeligente.org/bills/'
     @bill_id = String.new
   end
@@ -136,26 +136,32 @@ class VotingLowChamber < GenericStorage
   end
 
   def process_by_bill bill_id
-    sleep 1
-    response_voting = HTTParty.get(@location_vote_general + bill_id, :content_type => :xml)
-    response_voting = response_voting['Votaciones']
+    f = File.open('errors.log', 'a')
+    sleep 2
+    begin
+      response_voting = HTTParty.get(@location_vote_general + bill_id, :content_type => :xml)
+      response_voting = response_voting['Votaciones']
 
-    if response_voting.nil?
-      puts "skip " + bill_id
-    else
-      if response_voting['Votacion'].is_a? Array
-        response_voting['Votacion'].each do |voting|
-          get_details_of_voting voting['ID']
-          record = get_info voting, @votes, @pair_ups
-          post record
-          # debug record  #DEBUG
-        end
+      if response_voting.nil?
+        puts "skip " + bill_id
       else
-        get_details_of_voting response_voting['Votacion']['ID']
-        record = get_info response_voting['Votacion'], @votes, @pair_ups
-        post record
-        # debug record  #DEBUG
+        if response_voting['Votacion'].is_a? Array
+          response_voting['Votacion'].each do |voting|
+            get_details_of_voting voting['ID']
+            record = get_info voting, @votes, @pair_ups
+            # post record
+            debug record  #DEBUG
+          end
+        else
+          get_details_of_voting response_voting['Votacion']['ID']
+          record = get_info response_voting['Votacion'], @votes, @pair_ups
+          # post record
+          debug record  #DEBUG
+        end
       end
+    rescue Exception=>e
+      f.puts bill_id
+      puts e
     end
   end
 
