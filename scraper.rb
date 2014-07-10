@@ -56,7 +56,8 @@ class VotingLowChamber < GenericStorage
     @chamber = 'C.Diputados'
     @location_vote_general = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin='
     @location_vote_detail = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID='
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
+    # @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&page=25&per_page=50'
     @billit = 'http://billit.ciudadanointeligente.org/bills/'
     @bill_id = String.new
   end
@@ -66,7 +67,7 @@ class VotingLowChamber < GenericStorage
       @response = HTTParty.get(@billit_current_location, :content_type => :json)
       @response = JSON.parse(@response.body)
 
-      puts "Processing page " + @response['current_page'].to_s + " of " + @response['total_pages'].to_s
+      puts "*************** Processing page " + @response['current_page'].to_s + " of " + @response['total_pages'].to_s + " ***************"
 
       # process a single bill
       @response['bills'].each do |bill|
