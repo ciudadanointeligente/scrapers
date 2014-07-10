@@ -57,13 +57,14 @@ class VotingLowChamber < GenericStorage
     @location_vote_general = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin='
     @location_vote_detail = 'http://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID='
     # @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&per_page=200'
-    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&page=25&per_page=50'
+    @billit_current_location = 'http://billit.ciudadanointeligente.org/bills/search.json?fields=uid&page=29&per_page=50'
     @billit = 'http://billit.ciudadanointeligente.org/bills/'
     @bill_id = String.new
   end
 
   def process
-    while !@billit_current_location.nil? do
+    # while !@billit_current_location.nil? do
+    if !@billit_current_location.nil?
       @response = HTTParty.get(@billit_current_location, :content_type => :json)
       @response = JSON.parse(@response.body)
 
